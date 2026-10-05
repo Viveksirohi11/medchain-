@@ -1,0 +1,28 @@
+{
+  "name": "medchain",
+  "version": "1.0.0",
+  "description": "Full-stack blockchain anti-counterfeit medicine traceability (Solidity + Hardhat + Node/Express API + React)",
+  "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "demo": "hardhat run scripts/demo.js",
+    "deploy:local": "hardhat run scripts/deploy.js",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "deploy:amoy": "hardhat run scripts/deploy.js --network amoy",
+    "setup": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "chain": "hardhat node",
+    "seed": "npm --prefix backend run seed",
+    "backend": "npm --prefix backend start",
+    "frontend": "npm --prefix frontend run dev",
+    "test:backend": "npm --prefix backend test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/merkle-tree": "^1.0.7",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.0"
+  }
+}

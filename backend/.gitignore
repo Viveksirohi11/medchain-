@@ -1,0 +1,5 @@
+node_modules
+.env
+data/store.json
+data/deployment.json
+data/abi.json
