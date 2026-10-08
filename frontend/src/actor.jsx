@@ -84,7 +84,8 @@ export function ActorProvider({ children }) {
           {
             address,
             message: challenge.message,
-            signature
+            signature,
+            nonce: challenge.nonce
           }
         );
 

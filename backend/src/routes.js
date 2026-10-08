@@ -173,24 +173,42 @@ router.post(
 router.post(
   "/auth/verify",
   wrap(async (req, res) => {
+
     const {
       address,
       message,
-      signature
+      signature,
+      nonce
     } = req.body || {};
 
-    if (!address || !message || !signature) {
+    if (
+      !address ||
+      !message ||
+      !signature ||
+      !nonce
+    ) {
       throw bad(
-        "Address, message and signature are required"
+        "address, message, signature and nonce are required",
+        400
       );
     }
 
-    const verifiedAddress =
-      verifyChallenge(
-        address,
-        message,
-        signature
+    let verifiedAddress;
+
+    try {
+      verifiedAddress =
+        await verifyChallenge(
+          address,
+          message,
+          signature,
+          nonce
+        );
+    } catch (err) {
+      throw bad(
+        err.message,
+        400
       );
+    }
 
     const token =
       createToken(verifiedAddress);
@@ -201,7 +219,6 @@ router.post(
     });
   })
 );
-
 
 // ─────────────────────────────────────────────
 // Public / Read-only routes

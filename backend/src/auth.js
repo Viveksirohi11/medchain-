@@ -1,9 +1,8 @@
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { ethers } = require("ethers");
+const { SiweMessage } = require("siwe");
 
-// Temporary Day-1 challenge storage.
-// Day 2 will harden this with stronger nonce/session handling.
 const challenges = new Map();
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
@@ -26,58 +25,95 @@ function normalizeAddress(address) {
   return ethers.getAddress(address);
 }
 
+function getAuthConfig() {
+  const domain =
+    process.env.SIWE_DOMAIN || "localhost:5173";
+
+  const uri =
+    process.env.SIWE_URI ||
+    "http://localhost:5173";
+
+  const chainId =
+    Number(process.env.SIWE_CHAIN_ID || "31337");
+
+  if (!Number.isInteger(chainId) || chainId <= 0) {
+    throw new Error("Invalid SIWE_CHAIN_ID");
+  }
+
+  return {
+    domain,
+    uri,
+    chainId
+  };
+}
+
 function createChallenge(address) {
   const normalizedAddress =
     normalizeAddress(address);
 
+  const config = getAuthConfig();
+
   const nonce =
-    crypto.randomBytes(32).toString("hex");
+    crypto.randomBytes(16).toString("hex");
 
   const issuedAt = new Date();
 
-  const expiresAt = new Date(
-    issuedAt.getTime() + CHALLENGE_TTL_MS
-  );
+  const expirationTime =
+    new Date(
+      issuedAt.getTime() + CHALLENGE_TTL_MS
+    );
 
-  const message = [
-    "MedChain Authentication",
-    "",
-    `Wallet: ${normalizedAddress}`,
-    `Nonce: ${nonce}`,
-    `Issued At: ${issuedAt.toISOString()}`,
-    `Expiration Time: ${expiresAt.toISOString()}`
-  ].join("\n");
+  const message = new SiweMessage({
+    domain: config.domain,
+    address: normalizedAddress,
+    statement: "Sign in to MedChain.",
+    uri: config.uri,
+    version: "1",
+    chainId: config.chainId,
+    nonce,
+    issuedAt: issuedAt.toISOString(),
+    expirationTime:
+      expirationTime.toISOString()
+  });
+
+  const preparedMessage =
+    message.prepareMessage();
 
   challenges.set(
-    normalizedAddress.toLowerCase(),
+    nonce,
     {
-      nonce,
-      message,
-      issuedAt: issuedAt.getTime(),
-      expiresAt: expiresAt.getTime()
+      address: normalizedAddress,
+      message: preparedMessage,
+      expiresAt: expirationTime.getTime()
     }
   );
 
   return {
     address: normalizedAddress,
-    message,
-    expiresAt: expiresAt.toISOString()
+    message: preparedMessage,
+    nonce,
+    expiresAt:
+      expirationTime.toISOString()
   };
 }
 
-function verifyChallenge(
+async function verifyChallenge(
   address,
   message,
-  signature
+  signature,
+  nonce
 ) {
   const normalizedAddress =
     normalizeAddress(address);
 
-  const key =
-    normalizedAddress.toLowerCase();
+  if (!nonce) {
+    throw new Error(
+      "Authentication nonce is required"
+    );
+  }
 
   const challenge =
-    challenges.get(key);
+    challenges.get(nonce);
 
   if (!challenge) {
     throw new Error(
@@ -86,7 +122,7 @@ function verifyChallenge(
   }
 
   if (Date.now() > challenge.expiresAt) {
-    challenges.delete(key);
+    challenges.delete(nonce);
 
     throw new Error(
       "Authentication challenge expired"
@@ -99,22 +135,86 @@ function verifyChallenge(
     );
   }
 
-  let recoveredAddress;
+  if (
+    challenge.address.toLowerCase() !==
+    normalizedAddress.toLowerCase()
+  ) {
+    throw new Error(
+      "Authentication address mismatch"
+    );
+  }
+
+  const config = getAuthConfig();
+
+  let siweMessage;
 
   try {
-    recoveredAddress =
-      ethers.verifyMessage(
-        message,
-        signature
-      );
+    siweMessage =
+      new SiweMessage(message);
   } catch {
     throw new Error(
-      "Invalid wallet signature"
+      "Invalid SIWE message"
     );
   }
 
   if (
-    recoveredAddress.toLowerCase() !==
+    siweMessage.domain !==
+    config.domain
+  ) {
+    throw new Error(
+      "Authentication domain mismatch"
+    );
+  }
+
+  if (
+    siweMessage.uri !==
+    config.uri
+  ) {
+    throw new Error(
+      "Authentication URI mismatch"
+    );
+  }
+
+  if (
+    Number(siweMessage.chainId) !==
+    config.chainId
+  ) {
+    throw new Error(
+      "Wallet is connected to the wrong network"
+    );
+  }
+
+  if (
+    siweMessage.address.toLowerCase() !==
+    normalizedAddress.toLowerCase()
+  ) {
+    throw new Error(
+      "Wallet address does not match SIWE message"
+    );
+  }
+
+  if (siweMessage.nonce !== nonce) {
+    throw new Error(
+      "Authentication nonce mismatch"
+    );
+  }
+
+  const verification =
+    await siweMessage.verify({
+      signature,
+      domain: config.domain,
+      nonce,
+      time: new Date().toISOString()
+    });
+
+  if (!verification.success) {
+    throw new Error(
+      "Invalid SIWE signature"
+    );
+  }
+
+  if (
+    verification.data.address.toLowerCase() !==
     normalizedAddress.toLowerCase()
   ) {
     throw new Error(
@@ -122,8 +222,8 @@ function verifyChallenge(
     );
   }
 
-  // Challenge can only be used once.
-  challenges.delete(key);
+  // One-time challenge consumption.
+  challenges.delete(nonce);
 
   return normalizedAddress;
 }
