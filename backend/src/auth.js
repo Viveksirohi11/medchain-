@@ -199,13 +199,23 @@ async function verifyChallenge(
     );
   }
 
-  const verification =
-    await siweMessage.verify({
-      signature,
-      domain: config.domain,
-      nonce,
-      time: new Date().toISOString()
-    });
+ 
+let verification;
+
+try {
+  verification = await siweMessage.verify({
+    signature,
+    domain: config.domain,
+    nonce,
+    time: new Date().toISOString()
+  });
+} catch {
+  throw new Error("Invalid SIWE signature");
+}
+
+if (!verification || !verification.success) {
+  throw new Error("Invalid SIWE signature");
+}
 
   if (!verification.success) {
     throw new Error(
