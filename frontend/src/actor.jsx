@@ -39,6 +39,27 @@ export function ActorProvider({ children }) {
       }
     }
   }, []);
+    useEffect(() => {
+    if (!window.ethereum) return;
+
+    function handleAccountsChanged() {
+      localStorage.removeItem("medchain_actor");
+      localStorage.removeItem("medchain_token");
+      setActor(null);
+    }
+
+    window.ethereum.on(
+      "accountsChanged",
+      handleAccountsChanged
+    );
+
+    return () => {
+      window.ethereum.removeListener(
+        "accountsChanged",
+        handleAccountsChanged
+      );
+    };
+  }, []);
 
   async function connect() {
     if (!window.ethereum) {
