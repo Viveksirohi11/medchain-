@@ -36,8 +36,18 @@ function getContract(runner = provider) {
 const getDeployment = () => (getContract(), cached.deployment);
 
 /** Demo mode only: act as one of the unlocked Hardhat accounts. */
-const signerFor = (address) => provider.getSigner(address);
+```js
+/** Demo mode only: validate the address before requesting a Hardhat signer. */
+const signerFor = (address) => {
+  if (typeof address !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    const err = new Error("A valid Ethereum wallet address is required.");
+    err.status = 400;
+    throw err;
+  }
 
+  return provider.getSigner(address);
+};
+```
 /** Turn a Solidity custom error into a friendly sentence. */
 const FRIENDLY = {
   NotCustodian: "That address does not currently hold this batch.",
