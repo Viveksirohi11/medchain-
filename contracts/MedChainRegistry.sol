@@ -148,7 +148,9 @@ contract MedChainRegistry is AccessControl, Pausable {
     /// Allowed: manufacturer->{distributor,pharmacy}, distributor->{distributor,pharmacy}.
     function transferCustody(uint256 batchId, address to) external whenNotPaused {
         Batch storage b = _activeBatch(batchId);
-        if (b.custodian != msg.sender) revert NotCustodian();
+
+if (block.timestamp >= b.expiresAt) revert BatchExpired();
+if (b.custodian != msg.sender) revert NotCustodian();
         uint8 fromStage = _stage(msg.sender);
         uint8 toStage = _stage(to);
         if (fromStage == 0 || fromStage == 3 || toStage < 2 || to == msg.sender) revert InvalidTransfer();
