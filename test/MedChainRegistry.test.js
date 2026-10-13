@@ -122,7 +122,29 @@ describe("MedChainRegistry", () => {
       await registry.connect(mfr).transferCustody(batchId, pharm.address);
       await expect(registry.connect(pharm).transferCustody(batchId, pharm2.address)).to.be.revertedWithCustomError(registry, "InvalidTransfer");
     });
+it("blocks custody transfer after batch expiry", async () => {
+  const { registry, mfr, dist, batchId } =
+    await loadFixture(batchFixture);
 
+  await time.increase(366 * DAY);
+
+  await expect(
+    registry.connect(mfr).transferCustody(batchId, dist.address)
+  ).to.be.revertedWithCustomError(registry, "BatchExpired");
+});
+
+it("blocks a revoked distributor from transferring custody", async () => {
+  const { registry, mfr, dist, pharm, batchId, DIST } =
+    await loadFixture(batchFixture);
+
+  await registry.connect(mfr).transferCustody(batchId, dist.address);
+
+  await registry.revokeActor(dist.address, DIST);
+
+  await expect(
+    registry.connect(dist).transferCustody(batchId, pharm.address)
+  ).to.be.revertedWithCustomError(registry, "InvalidTransfer");
+});
     it("rejects unknown batches", async () => {
       const { registry, mfr, dist } = await loadFixture(batchFixture);
       await expect(registry.connect(mfr).transferCustody(99, dist.address)).to.be.revertedWithCustomError(registry, "UnknownBatch");
