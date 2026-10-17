@@ -8,20 +8,25 @@ const {
   verifyChallenge,
 } = require("../src/auth");
 
+
 test("rejects an invalid SIWE signature", async () => {
   const wallet = ethers.Wallet.createRandom();
+  const attacker = ethers.Wallet.createRandom();
   const challenge = createChallenge(wallet.address);
+
+  const signature = await attacker.signMessage(challenge.message);
 
   await assert.rejects(
     verifyChallenge(
       wallet.address,
       challenge.message,
-      "0x1234",
+      signature,
       challenge.nonce
     ),
     /Invalid SIWE signature/i
   );
 });
+
 
 test("rejects a different wallet address", async () => {
   const walletA = ethers.Wallet.createRandom();
@@ -90,4 +95,29 @@ test("rejects replaying a consumed challenge", async () => {
     ),
     /challenge not found/i
   );
+});
+
+test("rejects an expired authentication challenge", async () => {
+  const wallet = ethers.Wallet.createRandom();
+  const challenge = createChallenge(wallet.address);
+
+  const originalNow = Date.now;
+
+  try {
+    // Simulate time moving beyond the challenge's 5-minute lifetime.
+    Date.now = () => originalNow() + 5 * 60 * 1000;
+
+    await assert.rejects(
+      verifyChallenge(
+        wallet.address,
+        challenge.message,
+        "0x1234",
+        challenge.nonce
+      ),
+      /Authentication challenge expired/i
+    );
+  } finally {
+    // Always restore the real clock for other tests.
+    Date.now = originalNow;
+  }
 });
