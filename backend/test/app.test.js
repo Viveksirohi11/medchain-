@@ -25,7 +25,10 @@ test("unknown API routes return a JSON 404", async (t) => {
   );
 
   assert.equal(response.status, 404);
-  assert.deepEqual(await response.json(), {
-    error: "Not found",
-  });
+  assert.deepEqual(await response.json(), { error: "Not found" });
+});
+
+test("API app exports an Express application", () => {
+  assert.equal(typeof app, "function");
+  assert.equal(typeof app.listen, "function");
 });

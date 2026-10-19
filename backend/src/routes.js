@@ -24,6 +24,7 @@ const {
   generateSerials,
   buildBatch
 } = require("./lib/merkle");
+const { parsePagination } = require("./lib/pagination");
 
 const router = express.Router();
 
@@ -762,17 +763,7 @@ router.get(
       );
     }
 
-    const page =
-      Math.max(
-        parseInt(req.query.page) || 1,
-        1
-      );
-
-    const limit =
-      Math.min(
-        parseInt(req.query.limit) || 10,
-        50
-      );
+    const { page, limit } = parsePagination(req.query);
 
     const tree =
       buildBatch(
