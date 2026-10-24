@@ -65,3 +65,30 @@ assert.deepEqual(await response.json(), {
   error: "Invalid JSON",
 });
 });
+test("batch endpoint rejects a non-numeric batch ID", async (t) => {
+  const server = app.listen(0, "127.0.0.1");
+
+  await new Promise((resolve, reject) => {
+    server.once("listening", resolve);
+    server.once("error", reject);
+  });
+
+  t.after(() =>
+    new Promise((resolve, reject) => {
+      server.close((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    })
+  );
+
+  const { port } = server.address();
+  const response = await fetch(
+    `http://127.0.0.1:${port}/api/batches/abc`
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: "Batch ID must be a positive integer",
+  });
+});
