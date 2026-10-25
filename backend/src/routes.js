@@ -102,7 +102,23 @@ const needAddress = (v, label) => {
 
   return v;
 };
+const needString = (value, label, maxLength = 200) => {
+  if (typeof value !== "string") {
+    throw bad(`${label} must be a string`);
+  }
 
+  const normalized = value.trim();
+
+  if (!normalized) {
+    throw bad(`${label} is required`);
+  }
+
+  if (normalized.length > maxLength) {
+    throw bad(`${label} must be at most ${maxLength} characters`);
+  }
+
+  return normalized;
+};
 const needBatch = (id) => {
   if (!/^[1-9]\d*$/.test(String(id))) {
     throw bad("Batch ID must be a positive integer");
@@ -637,6 +653,7 @@ router.post(
       pharmacy,
       serial
     } = req.body || {};
+    const safeSerial = needString(serial, "serial", 128);
 
     needAddress(
       pharmacy,
@@ -653,7 +670,7 @@ router.post(
       );
 
     if (
-      !rec?.serials.includes(serial)
+      !rec?.serials.includes(safeSerial)
     ) {
       throw bad(
         "Serial not found for this batch"
@@ -663,7 +680,7 @@ router.post(
     const proof =
       buildBatch(
         rec.serials
-      ).proofOf(serial);
+      ).proofOf(safeSerial);
 
     const receipt =
       await (
