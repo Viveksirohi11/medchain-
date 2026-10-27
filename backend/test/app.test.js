@@ -170,3 +170,74 @@ for (const item of invalidBatchRequests) {
     }
   );
 }
+
+
+test("mutation routes reject missing bearer tokens", { skip: !DEMO_MODE }, async (t) => {
+  const cases = [
+    { path: "/api/batches", body: {} },
+    { path: "/api/batches/1/transfer", body: {} },
+    { path: "/api/batches/1/dispense", body: {} },
+    { path: "/api/batches/1/recall", body: {} },
+  ];
+
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise((resolve, reject) => {
+    server.once("listening", resolve);
+    server.once("error", reject);
+  });
+  t.after(() => new Promise((resolve, reject) => {
+    server.close((err) => err ? reject(err) : resolve());
+  }));
+
+  for (const item of cases) {
+    const response = await fetch(
+      `http://127.0.0.1:${server.address().port}${item.path}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(item.body),
+      }
+    );
+    assert.equal(response.status, 401, item.path);
+    assert.match((await response.json()).error, /Authentication required/i);
+  }
+});
+
+test("mutation routes reject a wallet different from the authenticated wallet", { skip: !DEMO_MODE }, async (t) => {
+  const { createToken } = require("../src/auth");
+  const authenticated = "0x0000000000000000000000000000000000000001";
+  const other = "0x0000000000000000000000000000000000000002";
+  const token = createToken(authenticated);
+
+  const cases = [
+    { path: "/api/batches", body: { manufacturer: other } },
+    { path: "/api/batches/1/transfer", body: { from: other, to: authenticated } },
+    { path: "/api/batches/1/dispense", body: { pharmacy: other, serial: "TEST-001" } },
+    { path: "/api/batches/1/recall", body: { by: other, reason: "Test" } },
+  ];
+
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise((resolve, reject) => {
+    server.once("listening", resolve);
+    server.once("error", reject);
+  });
+  t.after(() => new Promise((resolve, reject) => {
+    server.close((err) => err ? reject(err) : resolve());
+  }));
+
+  for (const item of cases) {
+    const response = await fetch(
+      `http://127.0.0.1:${server.address().port}${item.path}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(item.body),
+      }
+    );
+    assert.equal(response.status, 403, item.path);
+    assert.match((await response.json()).error, /must match/i);
+  }
+});

@@ -17,7 +17,8 @@ const { searchBatches } = require("./search");
 const {
   createChallenge,
   verifyChallenge,
-  createToken
+  createToken,
+  requireAuth
 } = require("./auth");
 
 const {
@@ -94,6 +95,28 @@ const requireDemo = (req, res, next) =>
         error:
           "Demo actions are disabled (DEMO_MODE=false)."
       });
+
+const validateBatchIdParam = (req, res, next) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({
+      error: "Batch ID must be a positive integer"
+    });
+  }
+  next();
+};
+
+const requireWalletMatch = (field) => (req, res, next) => {
+  const address = req.body?.[field];
+  if (!address || !ethers.isAddress(address)) return next();
+
+  if (address.toLowerCase() !== req.auth.address.toLowerCase()) {
+    return res.status(403).json({
+      error: `Authenticated wallet must match ${field}`
+    });
+  }
+  next();
+};
 
 const needAddress = (v, label) => {
   if (!ethers.isAddress(v)) {
@@ -472,6 +495,8 @@ router.post(
 router.post(
   "/batches",
   requireDemo,
+  requireAuth,
+  requireWalletMatch("manufacturer"),
   wrap(async (req, res) => {
 
     const {
@@ -603,6 +628,9 @@ router.post(
 router.post(
   "/batches/:id/transfer",
   requireDemo,
+  validateBatchIdParam,
+  requireAuth,
+  requireWalletMatch("from"),
   wrap(async (req, res) => {
 
     const {
@@ -647,6 +675,9 @@ router.post(
 router.post(
   "/batches/:id/dispense",
   requireDemo,
+  validateBatchIdParam,
+  requireAuth,
+  requireWalletMatch("pharmacy"),
   wrap(async (req, res) => {
 
     const {
@@ -726,6 +757,9 @@ router.post(
 router.post(
   "/batches/:id/recall",
   requireDemo,
+  validateBatchIdParam,
+  requireAuth,
+  requireWalletMatch("by"),
   wrap(async (req, res) => {
 
     const {
