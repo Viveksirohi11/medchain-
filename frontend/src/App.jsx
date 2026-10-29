@@ -6,6 +6,7 @@ import Verify from "./pages/Verify.jsx";
 import Batches from "./pages/Batches.jsx";
 import BatchDetail from "./pages/BatchDetail.jsx";
 import CreateBatch from "./pages/CreateBatch.jsx";
+import Investigation from "./pages/Investigation.jsx";
 
 export default function App() {
   const {
@@ -20,7 +21,7 @@ export default function App() {
     <>
       <header className="topbar">
         <div className="brand">
-          ⛓ MedChain
+          â—† MedChain
         </div>
 
         <nav>
@@ -92,6 +93,10 @@ onClick={async () => {
           <Route
             path="/batches"
             element={<Batches />}
+          />
+          <Route
+            path="/batches/:id/investigation"
+            element={<Investigation />}
           />
 
           <Route
