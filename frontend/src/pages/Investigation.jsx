@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { useActor } from "../actor.jsx";
@@ -55,7 +55,7 @@ export default function Investigation() {
     if (!address) return "Unknown actor";
 
     return (
-      actors.find(
+      (Array.isArray(actors) ? actors : []).find(
         (item) =>
           item.address?.toLowerCase() === address.toLowerCase()
       )?.name || shortAddr(address)
@@ -86,7 +86,7 @@ export default function Investigation() {
             <h1>Handoff evidence review</h1>
             <p>
               Review recorded custody events and identify what the current
-              records can—and cannot—establish.
+              records can�and cannot�establish.
             </p>
           </div>
           <span className="badge warn">Evidence review</span>
@@ -146,7 +146,7 @@ export default function Investigation() {
                 } else if (event.type === "custody") {
                   title = "Custody transferred";
                   description =
-                    `${nameOf(event.from)} → ${nameOf(event.to)}`;
+                    `${nameOf(event.from)} ? ${nameOf(event.to)}`;
                 } else if (event.type === "dispensed") {
                   title = "Pack dispensed";
                   description = `Recorded by ${nameOf(event.by)}`;
