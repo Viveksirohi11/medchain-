@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+﻿import { NavLink, Route, Routes } from "react-router-dom";
 import { useActor } from "./actor.jsx";
 
 import Dashboard from "./pages/Dashboard.jsx";
@@ -21,7 +21,7 @@ export default function App() {
     <>
       <header className="topbar">
         <div className="brand">
-          â—† MedChain
+          {"◆ MedChain"}
         </div>
 
         <nav>
