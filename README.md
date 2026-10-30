@@ -125,3 +125,11 @@ Open http://localhost:5173. Full explanation, API list, **advanced search syntax
 All 24 tests pass (licensing, registration, custody rules, dispensing, clone detection, forged serials,
 expiry, recall, pause, and a 137-serial Merkle correctness sweep). See `docs/SECURITY.md` for what the
 tests do **not** cover. A professional audit is required before any real deployment.
+
+## Latest Progress
+
+- Verified core smart contract workflows.
+- Backend automated tests passing.
+- Frontend production build verified.
+- Continuing production-readiness improvements.
+
