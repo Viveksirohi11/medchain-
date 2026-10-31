@@ -1,3 +1,4 @@
+
 import {
   createContext,
   useContext,
@@ -23,92 +24,96 @@ export function ActorProvider({ children }) {
 
   const connected = Boolean(actor);
 
-  useEffect(() => {
-    const savedActor =
-      localStorage.getItem("medchain_actor");
+  function clearSession() {
+    localStorage.removeItem("medchain_actor");
+    localStorage.removeItem("medchain_token");
+    setActor(null);
+  }
 
-    const token =
-      localStorage.getItem("medchain_token");
+  // Restore the previous session.
+  useEffect(() => {
+    const savedActor = localStorage.getItem("medchain_actor");
+    const token = localStorage.getItem("medchain_token");
 
     if (savedActor && token) {
       try {
         setActor(JSON.parse(savedActor));
       } catch {
-        localStorage.removeItem("medchain_actor");
-        localStorage.removeItem("medchain_token");
+        clearSession();
       }
     }
   }, []);
-    useEffect(() => {
+
+  // Handle wallet account and network changes.
+  useEffect(() => {
     if (!window.ethereum) return;
 
-    function handleAccountsChanged() {
-      localStorage.removeItem("medchain_actor");
-      localStorage.removeItem("medchain_token");
-      setActor(null);
+    async function handleAccountsChanged(accounts) {
+      const currentAddress = actor?.address?.toLowerCase();
+      const newAddress = accounts[0]?.toLowerCase();
+
+      if (!newAddress || newAddress !== currentAddress) {
+        clearSession();
+      }
     }
 
-    window.ethereum.on(
-      "accountsChanged",
-      handleAccountsChanged
-    );
+    function handleChainChanged() {
+      clearSession();
+    }
+
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    window.ethereum.on("chainChanged", handleChainChanged);
 
     return () => {
       window.ethereum.removeListener(
         "accountsChanged",
         handleAccountsChanged
       );
+
+      window.ethereum.removeListener(
+        "chainChanged",
+        handleChainChanged
+      );
     };
-  }, []);
+  }, [actor?.address]);
 
   async function connect() {
     if (!window.ethereum) {
-      throw new Error(
-        "Please install MetaMask"
-      );
+      throw new Error("Please install MetaMask");
     }
 
     setLoading(true);
 
     try {
-      const accounts =
-        await window.ethereum.request({
-          method: "eth_requestAccounts"
-        });
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts"
+      });
 
       if (!accounts.length) {
-        throw new Error(
-          "No wallet account selected"
-        );
+        throw new Error("No wallet account selected");
       }
 
       const address = accounts[0];
 
-      const challenge =
-        await api.post(
-          "/auth/challenge",
-          { address }
-        );
+      const challenge = await api.post(
+        "/auth/challenge",
+        { address }
+      );
 
-      const signature =
-        await window.ethereum.request({
-          method: "personal_sign",
-          params: [
-            challenge.message,
-            address
-          ]
-        });
+      const signature = await window.ethereum.request({
+        method: "personal_sign",
+        params: [challenge.message, address]
+      });
 
-      const result =
-        await api.post(
-          "/auth/verify",
-          {
-            address,
-            message: challenge.message,
-            signature,
-            nonce: challenge.nonce
-          }
-        );
+      const result = await api.post(
+        "/auth/verify",
+        {
+          address,
+          message: challenge.message,
+          signature,
+          nonce: challenge.nonce
+        }
+      );
 
       const authenticatedActor = {
         address: result.address
@@ -133,15 +138,7 @@ export function ActorProvider({ children }) {
   }
 
   function logout() {
-    localStorage.removeItem(
-      "medchain_token"
-    );
-
-    localStorage.removeItem(
-      "medchain_actor"
-    );
-
-    setActor(null);
+    clearSession();
   }
 
   return (
