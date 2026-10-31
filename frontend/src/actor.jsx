@@ -115,8 +115,16 @@ export function ActorProvider({ children }) {
         }
       );
 
+      const registeredActors = await api.get("/actors");
+      const registeredActor = registeredActors.find(
+        (item) =>
+          item.address?.toLowerCase() === result.address.toLowerCase()
+      );
+
       const authenticatedActor = {
-        address: result.address
+        address: result.address,
+        role: registeredActor?.role ?? null,
+        name: registeredActor?.name ?? null
       };
 
       localStorage.setItem(
@@ -155,3 +163,4 @@ export function ActorProvider({ children }) {
     </Ctx.Provider>
   );
 }
+
